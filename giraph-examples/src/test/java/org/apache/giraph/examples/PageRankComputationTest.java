@@ -18,62 +18,48 @@
 
 package org.apache.giraph.examples;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.Map;
+
 import org.apache.giraph.conf.GiraphConfiguration;
 import org.apache.giraph.edge.ByteArrayEdges;
 import org.apache.giraph.utils.InternalVertexRunner;
 import org.junit.Test;
-
-import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
-
 
 /**
  * Tests for {@link PageRankComputation}
  */
 public class PageRankComputationTest {
 
-  /**
-   * A local integration test on toy data
-   */
-  @Test
-  public void testToyData() throws Exception {
+	/**
+	 * A local integration test on toy data
+	 */
+	@Test
+	public void testToyData() throws Exception {
 
-    // A small graph
-    String[] graph = new String[] {
-      "1 4 2 3",
-      "2 1",
-      "4 3 2",
-      "5 2 4"
-    };
+		// A small graph
+		final String[] graph = new String[] { "1 4 2 3", "2 1", "4 3 2", "5 2 4" };
 
-    GiraphConfiguration conf = new GiraphConfiguration();
-    conf.setInt(RandomWalkWithRestartComputation.MAX_SUPERSTEPS, 50);
-    conf.setFloat(
-        RandomWalkWithRestartComputation.TELEPORTATION_PROBABILITY, 0.15f);
-    conf.setComputationClass(PageRankComputation.class);
-    conf.setOutEdgesClass(ByteArrayEdges.class);
-    conf.setVertexInputFormatClass(LongDoubleNullTextInputFormat.class);
-    conf.setVertexOutputFormatClass(
-        VertexWithDoubleValueNullEdgeTextOutputFormat.class);
-    conf.setWorkerContextClass(RandomWalkWorkerContext.class);
-    conf.setMasterComputeClass(RandomWalkVertexMasterCompute.class);
-    // Run internally
-    Iterable<String> results = InternalVertexRunner.run(conf, graph);
+		final GiraphConfiguration conf = new GiraphConfiguration();
+		conf.setInt(RandomWalkComputation.MAX_SUPERSTEPS, 50);
+		conf.setFloat(RandomWalkComputation.TELEPORTATION_PROBABILITY, 0.15f);
+		conf.setComputationClass(PageRankComputation.class);
+		conf.setOutEdgesClass(ByteArrayEdges.class);
+		conf.setVertexInputFormatClass(LongDoubleNullTextInputFormat.class);
+		conf.setVertexOutputFormatClass(VertexWithDoubleValueNullEdgeTextOutputFormat.class);
+		conf.setWorkerContextClass(RandomWalkWorkerContext.class);
+		conf.setMasterComputeClass(RandomWalkVertexMasterCompute.class);
+		// Run internally
+		final Iterable<String> results = InternalVertexRunner.run(conf, graph);
 
-    Map<Long, Double> steadyStateProbabilities =
-        RandomWalkTestUtils.parseSteadyStateProbabilities(results);
+		final Map<Long, Double> steadyStateProbabilities = RandomWalkTestUtils.parseSteadyStateProbabilities(results);
 
-    assertEquals(0.28159076008518047, steadyStateProbabilities.get(1l),
-        RandomWalkTestUtils.EPSILON);
-    assertEquals(0.2514648601529863, steadyStateProbabilities.get(2l),
-        RandomWalkTestUtils.EPSILON);
-    assertEquals(0.22262961972286327, steadyStateProbabilities.get(3l),
-        RandomWalkTestUtils.EPSILON);
-    assertEquals(0.17646783276703806, steadyStateProbabilities.get(4l),
-        RandomWalkTestUtils.EPSILON);
-    assertEquals(0.06784692727193153, steadyStateProbabilities.get(5l),
-        RandomWalkTestUtils.EPSILON);
-  }
+		assertEquals(0.28159076008518047, steadyStateProbabilities.get(1l), RandomWalkTestUtils.EPSILON);
+		assertEquals(0.2514648601529863, steadyStateProbabilities.get(2l), RandomWalkTestUtils.EPSILON);
+		assertEquals(0.22262961972286327, steadyStateProbabilities.get(3l), RandomWalkTestUtils.EPSILON);
+		assertEquals(0.17646783276703806, steadyStateProbabilities.get(4l), RandomWalkTestUtils.EPSILON);
+		assertEquals(0.06784692727193153, steadyStateProbabilities.get(5l), RandomWalkTestUtils.EPSILON);
+	}
 
 }
