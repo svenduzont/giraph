@@ -152,7 +152,7 @@ public class NettyWorkerServer<I extends WritableComparable,
       if (!resolveVertexIndices.put(partitionId, vertexId)) {
         throw new IllegalStateException(
             "resolveMutations: Already has missing vertex on this " +
-                "worker for " + vertexId);
+                "worker for " + vertexId + " mutations:" + e.getValue());
       }
     }
     // Keep track of the vertices which are not here but have received messages

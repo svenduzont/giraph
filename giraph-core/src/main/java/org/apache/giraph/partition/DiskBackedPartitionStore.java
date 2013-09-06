@@ -614,7 +614,7 @@ public class DiskBackedPartitionStore<I extends WritableComparable,
    * @return The path to the given partition
    */
   private String getPartitionPath(Integer partitionId) {
-    int hash = hasher.hashInt(partitionId).asInt();
+    int hash = hasher.hashLong(partitionId).asInt();
     int idx  = Math.abs(hash % basePaths.length);
     return basePaths[idx] + "/partition-" + partitionId;
   }
