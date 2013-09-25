@@ -597,9 +597,11 @@ public class BspServiceMaster<I extends WritableComparable,
     try {
       if (getZkExt().exists(inputSplitsPath, false) != null) {
         LOG.info(inputSplitsPath + " already exists, no need to create");
-        return Integer.parseInt(
-            new String(getZkExt().getData(inputSplitsPath, false, null),
-                Charset.defaultCharset()));
+        byte[] data = getZkExt().getData(inputSplitsPath, false, null);
+        if (data == null) {
+          return -1;
+        }
+        return Integer.parseInt(new String(data, Charset.defaultCharset()));
       }
     } catch (KeeperException.NoNodeException e) {
       if (LOG.isInfoEnabled()) {
