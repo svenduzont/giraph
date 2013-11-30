@@ -19,13 +19,14 @@
 package org.apache.giraph.conf;
 
 import org.apache.giraph.aggregators.AggregatorWriter;
-import org.apache.giraph.combiner.Combiner;
+import org.apache.giraph.combiner.MessageCombiner;
 import org.apache.giraph.edge.OutEdges;
 import org.apache.giraph.edge.ReuseObjectsOutEdges;
 import org.apache.giraph.factories.ComputationFactory;
+import org.apache.giraph.graph.VertexValueCombiner;
+import org.apache.giraph.graph.VertexResolver;
 import org.apache.giraph.factories.VertexValueFactory;
 import org.apache.giraph.graph.Computation;
-import org.apache.giraph.graph.VertexResolver;
 import org.apache.giraph.io.EdgeInputFormat;
 import org.apache.giraph.io.EdgeOutputFormat;
 import org.apache.giraph.io.VertexInputFormat;
@@ -33,6 +34,7 @@ import org.apache.giraph.io.VertexOutputFormat;
 import org.apache.giraph.io.filters.EdgeInputFilter;
 import org.apache.giraph.io.filters.VertexInputFilter;
 import org.apache.giraph.job.GiraphJobObserver;
+import org.apache.giraph.job.GiraphJobRetryChecker;
 import org.apache.giraph.master.MasterCompute;
 import org.apache.giraph.master.MasterObserver;
 import org.apache.giraph.partition.GraphPartitionerFactory;
@@ -96,7 +98,7 @@ public class GiraphConfiguration extends Configuration
   }
 
   /**
-   * Get the user's subclassed {@link org.apache.giraph.graph.Computation}
+   * Get the user's subclassed {@link Computation}
    *
    * @return User's computation class
    */
@@ -298,6 +300,25 @@ public class GiraphConfiguration extends Configuration
   }
 
   /**
+   * Get job retry checker class
+   *
+   * @return GiraphJobRetryChecker class set.
+   */
+  public Class<? extends GiraphJobRetryChecker> getJobRetryCheckerClass() {
+    return JOB_RETRY_CHECKER_CLASS.get(this);
+  }
+
+  /**
+   * Set job retry checker class
+   *
+   * @param klass GiraphJobRetryChecker class to set.
+   */
+  public void setJobRetryCheckerClass(
+      Class<? extends GiraphJobRetryChecker> klass) {
+    JOB_RETRY_CHECKER_CLASS.set(this, klass);
+  }
+
+  /**
    * Check whether to enable jmap dumping thread.
    *
    * @return true if jmap dumper is enabled.
@@ -467,22 +488,22 @@ public class GiraphConfiguration extends Configuration
   }
 
   /**
-   * Get the vertex combiner class (optional)
+   * Get the message combiner class (optional)
    *
-   * @return vertexCombinerClass Determines how vertex messages are combined
+   * @return messageCombinerClass Determines how vertex messages are combined
    */
-  public Class<? extends Combiner> getCombinerClass() {
-    return VERTEX_COMBINER_CLASS.get(this);
+  public Class<? extends MessageCombiner> getMessageCombinerClass() {
+    return MESSAGE_COMBINER_CLASS.get(this);
   }
 
   /**
-   * Set the vertex combiner class (optional)
+   * Set the message combiner class (optional)
    *
-   * @param vertexCombinerClass Determines how vertex messages are combined
+   * @param messageCombinerClass Determines how vertex messages are combined
    */
-  public void setCombinerClass(
-      Class<? extends Combiner> vertexCombinerClass) {
-    VERTEX_COMBINER_CLASS.set(this, vertexCombinerClass);
+  public void setMessageCombinerClass(
+      Class<? extends MessageCombiner> messageCombinerClass) {
+    MESSAGE_COMBINER_CLASS.set(this, messageCombinerClass);
   }
 
   /**
@@ -522,6 +543,16 @@ public class GiraphConfiguration extends Configuration
    */
   public final void setResolverCreateVertexOnMessages(boolean v) {
     RESOLVER_CREATE_VERTEX_ON_MSGS.set(this, v);
+  }
+
+  /**
+   * Set the vertex value combiner class (optional)
+   *
+   * @param vertexValueCombinerClass Determines how vertices are combined
+   */
+  public final void setVertexValueCombinerClass(
+      Class<? extends VertexValueCombiner> vertexValueCombinerClass) {
+    VERTEX_VALUE_COMBINER_CLASS.set(this, vertexValueCombinerClass);
   }
 
   /**
@@ -698,6 +729,27 @@ public class GiraphConfiguration extends Configuration
    */
   public String getZookeeperList() {
     return get(ZOOKEEPER_LIST);
+  }
+
+  /**
+   * Set the ZooKeeper list to the provided list. This method is used when the
+   * ZooKeeper is started internally and will set the zkIsExternal option to
+   * false as well.
+   *
+   * @param zkList list of strings, comma separated of zookeeper servers
+   */
+  public void setZookeeperList(String zkList) {
+    set(ZOOKEEPER_LIST, zkList);
+    ZOOKEEPER_IS_EXTERNAL.set(this, false);
+  }
+
+  /**
+   * Was ZooKeeper provided externally?
+   *
+   * @return true iff was zookeeper is external
+   */
+  public boolean isZookeeperExternal() {
+    return ZOOKEEPER_IS_EXTERNAL.get(this);
   }
 
   public String getLocalLevel() {

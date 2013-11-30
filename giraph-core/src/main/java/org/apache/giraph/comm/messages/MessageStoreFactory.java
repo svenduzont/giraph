@@ -34,7 +34,7 @@ public interface MessageStoreFactory<I extends WritableComparable,
   /**
    * Creates new message store.
    *
-   * Note: Combiner class in Configuration can be changed,
+   * Note: MessageCombiner class in Configuration can be changed,
    * this method should return MessageStore which uses current combiner
    *
    *

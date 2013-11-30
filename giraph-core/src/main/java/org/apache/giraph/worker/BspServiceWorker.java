@@ -169,7 +169,6 @@ public class BspServiceWorker<I extends WritableComparable,
   /**
    * Constructor for setting up the worker.
    *
-   * @param serverPortList ZooKeeper server port list
    * @param sessionMsecTimeout Msecs to timeout connecting to ZooKeeper
    * @param context Mapper context
    * @param graphTaskManager GraphTaskManager for this compute node
@@ -177,12 +176,11 @@ public class BspServiceWorker<I extends WritableComparable,
    * @throws InterruptedException
    */
   public BspServiceWorker(
-    String serverPortList,
     int sessionMsecTimeout,
     Mapper<?, ?, ?, ?>.Context context,
     GraphTaskManager<I, V, E> graphTaskManager)
     throws IOException, InterruptedException {
-    super(serverPortList, sessionMsecTimeout, context, graphTaskManager);
+    super(sessionMsecTimeout, context, graphTaskManager);
     ImmutableClassesGiraphConfiguration<I, V, E> conf = getConfiguration();
     partitionExchangeChildrenChanged = new PredicateLock(context);
     registerBspEvent(partitionExchangeChildrenChanged);
@@ -571,7 +569,7 @@ public class BspServiceWorker<I extends WritableComparable,
         new ArrayList<PartitionStats>();
     for (Integer partitionId : getPartitionStore().getPartitionIds()) {
       Partition<I, V, E> partition =
-          getPartitionStore().getPartition(partitionId);
+          getPartitionStore().getOrCreatePartition(partitionId);
       PartitionStats partitionStats =
           new PartitionStats(partition.getId(),
               partition.getVertexCount(),
@@ -974,7 +972,7 @@ public class BspServiceWorker<I extends WritableComparable,
               }
 
               Partition<I, V, E> partition =
-                  getPartitionStore().getPartition(partitionId);
+                  getPartitionStore().getOrCreatePartition(partitionId);
               long verticesWritten = 0;
               for (Vertex<I, V, E> vertex : partition) {
                 vertexWriter.writeVertex(vertex);
@@ -1082,7 +1080,7 @@ public class BspServiceWorker<I extends WritableComparable,
               }
 
               Partition<I, V, E> partition =
-                  getPartitionStore().getPartition(partitionId);
+                  getPartitionStore().getOrCreatePartition(partitionId);
               long vertices = 0;
               long edges = 0;
               long partitionEdgeCount = partition.getEdgeCount();
@@ -1241,7 +1239,7 @@ public class BspServiceWorker<I extends WritableComparable,
     DataOutput metadataOutput = new DataOutputStream(metadataByteStream);
     for (Integer partitionId : getPartitionStore().getPartitionIds()) {
       Partition<I, V, E> partition =
-          getPartitionStore().getPartition(partitionId);
+          getPartitionStore().getOrCreatePartition(partitionId);
       long startPos = verticesOutputStream.getPos();
       partition.write(verticesOutputStream);
       // write messages
@@ -1534,10 +1532,9 @@ else[HADOOP_NON_SECURE]*/
         getPartitionExchangeChildrenChangedEvent().waitForever();
         getPartitionExchangeChildrenChangedEvent().reset();
       }
-    } catch (KeeperException e) {
-      throw new RuntimeException(e);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
+    } catch (KeeperException | InterruptedException e) {
+      throw new RuntimeException(
+          "exchangeVertexPartitions: Got runtime exception", e);
     }
 
     if (LOG.isInfoEnabled()) {

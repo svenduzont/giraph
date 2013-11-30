@@ -1,14 +1,84 @@
 Giraph Change Log
 
 Release 1.1.0 - unreleased
+  GIRAPH-798: Upgrade Giraph to Java7 and fix all dependencies (aching)
+
+  GIRAPH-797: If the vertex input data path is incorrect Giraph job hangs indefinitely 
+  until killed by JobTracker for exceeding timeout (jaeyu via claudio)
+
+  GIRAPH-793: Create necessary documentation for Giraph-Gora integration 
+  (renato2099 via claudio)
+
+  GIRAPH-760: Create EdgeOutputFormat to Apache Gora (renato2099 via claudio)
+
+  GIRAPH-759: Create EdgeInputFormat from Apache Gora (renato2099 via claudio)
+
+  GIRAPH-758: Create VertexOutputFormat to Apache Gora (renato2099 via claudio)
+  
+  GIRAPH-757: Create VertexInputFormat from Apache Gora (renato2099 via claudio)
+
+  GIRAPH-442: FileNotFoundException: <baseDirectory>/_zkServer is checked before it is created
+  (miteshsjat via claudio)
+
+  GIRAPH-796: Site build error with maven 3.1 (armax00 via claudio)
+
+  GIRAPH-782: giraph script can't find GIRAPH_ENV_DIR when called via $PATH (rvs)
+
+  GIRAPH-783: giraph bin script should pick up giraph-core jar to pass to hadoop (rvs) 
+
+  GIRAPH-781: binary tarball lacks /bin and /conf directories (rvs)
+
+  GIRAPH-749: Update documentation according to the new EdgeOutputFormat API 
+  (armax00 via claudio)
+
+  GIRAPH-738: Fix typos in quick start guide (aladagemre via claudio)
+
+  GIRAPH-755: Make ZooKeeper port list available to input/output format (armax00 via claudio)
+
+  GIRAPH-737: Giraph Application Master: Move to new and stable YARN API (mislam via ereisman)
+
+  GIRAPH-791: HiveGiraphRunner picks -D options too late (majakabiljo)
+
+  GIRAPH-790: Add a way to automatically retry a job (majakabiljo)
+
+  GIRAPH-789: Upgrade hive-io to 0.20 - less metastore accesses (majakabiljo)
+
+  GIRAPH-787: Use HiveIO 1.9 (gmalewicz via aching)
+
+  GIRAPH-786: XSparseVector create a lot of objects in add/write
+  (ikabiljo via majakabiljo)
+
+  GIRAPH-773: Cannot use only EdgeOutputFormat (armax00 via claudio)
+
+  GIRAPH-779: Make it easier to reuse objects with hive-io input (majakabiljo)
+
+  GIRAPH-778: Testing with TestGraph is broken (majakabiljo)
+
+  GIRAPH-777: Fix bug from GIRAPH-775 (majakabiljo)
+
+  GIRAPH-776: Update Giraph to use HiveIO 0.18 (gmalewicz via majakabiljo)
+
+  GIRAPH-775: Vertex value combiner (aching)
+
+  GIRAPH-761: GiraphFileInputFormat ignores hidden file filter in
+  folders (Manuel Lagang via aching)
+
+  GIRAPH-771: Upgrade hive-io to 0.17 (majakabiljo)
+
+  GIRAPH-756: Provide a way to halt running application (majakabiljo)
+
+  GIRAPH-753: Efficient dense matrix aggregators (herald via apresta)
+
+  GIRAPH-752: Better support for supernodes (majakabiljo)
+
   GIRAPH-727: Support for Watts Strogatz VertexInputFormat (claudio)
 
   GIRAPH-746: Track and log versions of dependencies (nitay)
 
   GIRAPH-751: Build error: convertEdgeToLine in two different classes have the 
-  same erasure, yet neither overrides the other (aarmax0 via claudio)
+  same erasure, yet neither overrides the other (armax00 via claudio)
 
-  GIRAPH-732: EdgeOutputFormat (aarmax00 via claudio)
+  GIRAPH-732: EdgeOutputFormat (armax00 via claudio)
 
   GIRAPH-512: JavaDoc warnings (tdn120 via nitay)
 
@@ -699,7 +769,7 @@ Release 1.0.0 - 2013-04-15
   GIRAPH-298: Reduce timeout for TestAutoCheckpoint. (majakabiljo via
   aching)
 	
-  GIRAPH-324: Add option to use combiner in benchmarks. (apresta via
+  GIRAPH-324: Add option to use messageCombiner in benchmarks. (apresta via
   aching)
 
   GIRAPH-191: Random walks on graphs (Gianmarco De Francisci Morales
@@ -832,7 +902,7 @@ Release 1.0.0 - 2013-04-15
   GIRAPH-236: Add FindBugs to maven build (Jan van der Lugt via
   aching).
 
-  GIRAPH-224: Netty server-side combiner (apresta via aching).
+  GIRAPH-224: Netty server-side messageCombiner (apresta via aching).
 
   GIRAPH-251: Allow to access the distributed cache from Vertexes and
   WorkerContext (Gianmarco De Francisci Morales via aching).

@@ -19,7 +19,7 @@ package org.apache.giraph.conf;
 
 import org.apache.giraph.aggregators.AggregatorWriter;
 import org.apache.giraph.aggregators.TextAggregatorWriter;
-import org.apache.giraph.combiner.Combiner;
+import org.apache.giraph.combiner.MessageCombiner;
 import org.apache.giraph.edge.ByteArrayEdges;
 import org.apache.giraph.edge.OutEdges;
 import org.apache.giraph.factories.ComputationFactory;
@@ -34,8 +34,10 @@ import org.apache.giraph.factories.MessageValueFactory;
 import org.apache.giraph.factories.VertexIdFactory;
 import org.apache.giraph.factories.VertexValueFactory;
 import org.apache.giraph.graph.Computation;
+import org.apache.giraph.graph.DefaultVertexValueCombiner;
 import org.apache.giraph.graph.DefaultVertexResolver;
 import org.apache.giraph.graph.Language;
+import org.apache.giraph.graph.VertexValueCombiner;
 import org.apache.giraph.graph.VertexResolver;
 import org.apache.giraph.io.EdgeInputFormat;
 import org.apache.giraph.io.EdgeOutputFormat;
@@ -45,8 +47,11 @@ import org.apache.giraph.io.filters.DefaultEdgeInputFilter;
 import org.apache.giraph.io.filters.DefaultVertexInputFilter;
 import org.apache.giraph.io.filters.EdgeInputFilter;
 import org.apache.giraph.io.filters.VertexInputFilter;
+import org.apache.giraph.job.DefaultGiraphJobRetryChecker;
 import org.apache.giraph.job.DefaultJobObserver;
 import org.apache.giraph.job.GiraphJobObserver;
+import org.apache.giraph.job.GiraphJobRetryChecker;
+import org.apache.giraph.job.HaltApplicationUtils;
 import org.apache.giraph.master.DefaultMasterCompute;
 import org.apache.giraph.master.MasterCompute;
 import org.apache.giraph.master.MasterObserver;
@@ -149,15 +154,20 @@ public interface GiraphConstants {
   ClassConfOption<WorkerObserver> WORKER_OBSERVER_CLASSES =
       ClassConfOption.create("giraph.worker.observers", null,
           WorkerObserver.class, "Classes for Worker Observer - optional");
-  /** Vertex combiner class - optional */
-  ClassConfOption<Combiner> VERTEX_COMBINER_CLASS =
-      ClassConfOption.create("giraph.combinerClass", null, Combiner.class,
-          "Vertex combiner class - optional");
+  /** Message combiner class - optional */
+  ClassConfOption<MessageCombiner> MESSAGE_COMBINER_CLASS =
+      ClassConfOption.create("giraph.messageCombinerClass", null,
+          MessageCombiner.class, "Message combiner class - optional");
   /** Vertex resolver class - optional */
   ClassConfOption<VertexResolver> VERTEX_RESOLVER_CLASS =
       ClassConfOption.create("giraph.vertexResolverClass",
           DefaultVertexResolver.class, VertexResolver.class,
           "Vertex resolver class - optional");
+  /** Vertex value combiner class - optional */
+  ClassConfOption<VertexValueCombiner> VERTEX_VALUE_COMBINER_CLASS =
+      ClassConfOption.create("giraph.vertexValueCombinerClass",
+          DefaultVertexValueCombiner.class, VertexValueCombiner.class,
+          "Vertex value combiner class - optional");
 
   /** Which language computation is implemented in */
   EnumConfOption<Language> COMPUTATION_LANGUAGE =
@@ -184,6 +194,13 @@ public interface GiraphConstants {
       ClassConfOption.create("giraph.jobObserverClass",
           DefaultJobObserver.class, GiraphJobObserver.class,
           "Observer class to watch over job status - optional");
+
+  /** Observer class to watch over job status - optional */
+  ClassConfOption<GiraphJobRetryChecker> JOB_RETRY_CHECKER_CLASS =
+      ClassConfOption.create("giraph.jobRetryCheckerClass",
+          DefaultGiraphJobRetryChecker.class, GiraphJobRetryChecker.class,
+          "Class which decides whether a failed job should be retried - " +
+              "optional");
 
   // At least one of the input format classes is required.
   /** VertexInputFormat class */
@@ -221,7 +238,7 @@ public interface GiraphConstants {
           EdgeOutputFormat.class, "EdgeOutputFormat class");
   /** EdgeOutputFormat sub-directory */
   StrConfOption EDGE_OUTPUT_FORMAT_SUBDIR =
-    new StrConfOption("giraph.edge.output.subdir", "edges",
+    new StrConfOption("giraph.edge.output.subdir", "",
                       "EdgeOutputFormat sub-directory");
 
   /** GiraphTextOuputFormat Separator */
@@ -387,9 +404,23 @@ public interface GiraphConstants {
 
   /**
    *  ZooKeeper comma-separated list (if not set,
-   *  will start up ZooKeeper locally)
+   *  will start up ZooKeeper locally). Consider that after locally-starting
+   *  zookeeper, this parameter will updated the configuration with the corrent
+   *  configuration value.
    */
   String ZOOKEEPER_LIST = "giraph.zkList";
+
+  /**
+   * Zookeeper List will always hold a value during the computation while
+   * this option provides information regarding whether the zookeeper was
+   * internally started or externally provided.
+   */
+  BooleanConfOption ZOOKEEPER_IS_EXTERNAL =
+    new BooleanConfOption("giraph.zkIsExternal", true,
+                          "Zookeeper List will always hold a value during " +
+                          "the computation while this option provides " +
+                          "information regarding whether the zookeeper was " +
+                          "internally started or externally provided.");
 
   /** ZooKeeper session millisecond timeout */
   IntConfOption ZOOKEEPER_SESSION_TIMEOUT =
@@ -587,6 +618,20 @@ public interface GiraphConstants {
           "request size is M, and a worker has P partitions, than its " +
           "initial partition buffer size will be (M / P) * (1 + A).");
 
+  /** Maximum size of vertices (in bytes) per peer before flush */
+  IntConfOption MAX_VERTEX_REQUEST_SIZE =
+      new IntConfOption("giraph.vertexRequestSize", 512 * ONE_KB,
+          "Maximum size of vertices (in bytes) per peer before flush");
+
+  /**
+   * Additional size (expressed as a ratio) of each per-partition buffer on
+   * top of the average size for vertices.
+   */
+  FloatConfOption ADDITIONAL_VERTEX_REQUEST_SIZE =
+      new FloatConfOption("giraph.additionalVertexRequestSize", 0.2f,
+          "Additional size (expressed as a ratio) of each per-partition " +
+              "buffer on top of the average size.");
+
   /** Maximum size of edges (in bytes) per peer before flush */
   IntConfOption MAX_EDGE_REQUEST_SIZE =
       new IntConfOption("giraph.edgeRequestSize", 512 * ONE_KB,
@@ -594,7 +639,7 @@ public interface GiraphConstants {
 
   /**
    * Additional size (expressed as a ratio) of each per-partition buffer on
-   * top of the average size.
+   * top of the average size for edges.
    */
   FloatConfOption ADDITIONAL_EDGE_REQUEST_SIZE =
       new FloatConfOption("giraph.additionalEdgeRequestSize", 0.2f,
@@ -664,9 +709,9 @@ public interface GiraphConstants {
   LongConfOption INPUT_SPLIT_MAX_VERTICES =
       new LongConfOption("giraph.InputSplitMaxVertices", -1,
           "To limit outlier vertex input splits from producing too many " +
-          "vertices or to help with testing, the number of vertices loaded " +
-          "from an input split can be limited. By default, everything is " +
-          "loaded.");
+              "vertices or to help with testing, the number of vertices " +
+              "loaded from an input split can be limited. By default, " +
+              "everything is loaded.");
 
   /**
    * To limit outlier vertex input splits from producing too many vertices or
@@ -676,9 +721,9 @@ public interface GiraphConstants {
   LongConfOption INPUT_SPLIT_MAX_EDGES =
       new LongConfOption("giraph.InputSplitMaxEdges", -1,
           "To limit outlier vertex input splits from producing too many " +
-          "vertices or to help with testing, the number of edges loaded " +
-          "from an input split can be limited. By default, everything is " +
-          "loaded.");
+              "vertices or to help with testing, the number of edges loaded " +
+              "from an input split can be limited. By default, everything is " +
+              "loaded.");
 
   /**
    * To minimize network usage when reading input splits,
@@ -923,5 +968,27 @@ public interface GiraphConstants {
   BooleanConfOption ONE_TO_ALL_MSG_SENDING =
     new BooleanConfOption("giraph.oneToAllMsgSending", false, "Enable " +
         "one-to-all message sending strategy");
+
+  /**
+   * This counter group will contain one counter whose name is the ZooKeeper
+   * server:port which this job is using
+   */
+  String ZOOKEEPER_SERVER_PORT_COUNTER_GROUP = "Zookeeper server:port";
+
+  /**
+   * This counter group will contain one counter whose name is the ZooKeeper
+   * node path which should be created to trigger computation halt
+   */
+  String ZOOKEEPER_HALT_NODE_COUNTER_GROUP = "Zookeeper halt node";
+
+  /**
+   * Which class to use to write instructions on how to halt the application
+   */
+  ClassConfOption<HaltApplicationUtils.HaltInstructionsWriter>
+  HALT_INSTRUCTIONS_WRITER_CLASS = ClassConfOption.create(
+      "giraph.haltInstructionsWriter",
+      HaltApplicationUtils.DefaultHaltInstructionsWriter.class,
+      HaltApplicationUtils.HaltInstructionsWriter.class,
+      "Class used to write instructions on how to halt the application");
 }
 // CHECKSTYLE: resume InterfaceIsTypeCheck
