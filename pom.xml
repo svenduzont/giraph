@@ -24,7 +24,7 @@ under the License.
   <groupId>org.apache.giraph</groupId>
   <artifactId>giraph-parent</artifactId>
   <packaging>pom</packaging>
-  <version>1.1.0-SNAPSHOT</version>
+  <version>1.1.0-hadoop-1.2.1-SNAPSHOT</version>
 
   <name>Apache Giraph Parent</name>
   <url>http://giraph.apache.org/</url>
@@ -704,7 +704,7 @@ under the License.
         <module>giraph-rexster</module>
       </modules>
       <properties>
-        <hadoop.version>1.0.2</hadoop.version>
+        <hadoop.version>1.2.1</hadoop.version>
         <munge.symbols>HADOOP_NON_JOBCONTEXT_IS_INTERFACE,HADOOP_1_SECURITY,HADOOP_1_SECRET_MANAGER</munge.symbols>
       </properties>
       <dependencies>
@@ -784,7 +784,7 @@ under the License.
     <profile>
       <id>hadoop_0.23</id>
       <properties>
-        <hadoop.version>0.23.1</hadoop.version>
+        <hadoop.version>0.23.10</hadoop.version>
         <munge.symbols>HADOOP_1_SECRET_MANAGER</munge.symbols>
       </properties>
       <dependencies>
