@@ -23,127 +23,172 @@ import org.apache.giraph.utils.WritableUtils;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.util.Progressable;
+import org.python.google.common.io.Files;
 
 import com.google.common.collect.Maps;
 
+import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import static org.apache.giraph.conf.GiraphConstants.USE_OUT_OF_CORE_MESSAGES;
 
 /**
- * A simple map-based container that stores vertices.  Vertex ids will map to
- * exactly one partition.
- *
+ * A simple map-based container that stores vertices. Vertex ids will map to exactly one partition.
+ * 
  * @param <I> Vertex id
  * @param <V> Vertex data
  * @param <E> Edge data
  */
 @SuppressWarnings("rawtypes")
-public class SimplePartition<I extends WritableComparable,
-    V extends Writable, E extends Writable>
-    extends BasicPartition<I, V, E> {
-  /** Vertex map for this range (keyed by index) */
-  private ConcurrentMap<I, Vertex<I, V, E>> vertexMap;
+public class SimplePartition<I extends WritableComparable, V extends Writable, E extends Writable> extends
+		BasicPartition<I, V, E> {
 
-  /**
-   * Constructor for reflection.
-   */
-  public SimplePartition() { }
+	/** Vertex map for this range (keyed by index) */
+	private ConcurrentMap<I, Vertex<I, V, E>> vertexMap;
+	private Object nullId;
 
-  @Override
-  public void initialize(int partitionId, Progressable progressable) {
-    super.initialize(partitionId, progressable);
-    if (USE_OUT_OF_CORE_MESSAGES.get(getConf())) {
-      vertexMap = new ConcurrentSkipListMap<I, Vertex<I, V, E>>();
-    } else {
-      vertexMap = Maps.newConcurrentMap();
-    }
-  }
+	/**
+	 * Constructor for reflection.
+	 */
+	public SimplePartition() {}
 
-  @Override
-  public Vertex<I, V, E> getVertex(I vertexIndex) {
-    return vertexMap.get(vertexIndex);
-  }
+	public void dump(File f) {
+		final Set<Entry<I, Vertex<I, V, E>>> entrySet = vertexMap.entrySet();
+		BufferedWriter writer = null;
+		try {
+			writer = Files.newWriter(f, Charset.defaultCharset());
+			for (Entry<I, Vertex<I, V, E>> entry : entrySet) {
+				writer.append(entry.toString()).append("\n");
+			}
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException(e);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		} finally {
+			if (writer != null)
+				try {
+					writer.close();
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+		}
+		erzr();
+	}
 
-  @Override
-  public Vertex<I, V, E> putVertex(Vertex<I, V, E> vertex) {
-    return vertexMap.put(vertex.getId(), vertex);
-  }
+	protected void erzr() {
+		if (nullId == null) {
+			return;
+		}
 
-  @Override
-  public Vertex<I, V, E> removeVertex(I vertexIndex) {
-    return vertexMap.remove(vertexIndex);
-  }
+		final Set<I> keySet = vertexMap.keySet();
+		for (I i : keySet) {
+			System.out.println(i);
+		}
+		final Vertex<I, V, E> vertex = vertexMap.get(nullId);
+		System.out.println(vertex);
+	}
 
-  @Override
-  public void addPartition(Partition<I, V, E> partition) {
-    for (Vertex<I, V, E> vertex : partition) {
-      vertexMap.put(vertex.getId(), vertex);
-    }
-  }
+	@Override
+	public void initialize(int partitionId, Progressable progressable) {
+		super.initialize(partitionId, progressable);
+		if (USE_OUT_OF_CORE_MESSAGES.get(getConf())) {
+			vertexMap = new ConcurrentSkipListMap<I, Vertex<I, V, E>>();
+		} else {
+			vertexMap = Maps.newConcurrentMap();
+		}
+	}
 
-  @Override
-  public long getVertexCount() {
-    return vertexMap.size();
-  }
+	@Override
+	public Vertex<I, V, E> getVertex(I vertexIndex) {
+		final Vertex<I, V, E> vertex = vertexMap.get(vertexIndex);
+		if (vertex == null) {
+			this.nullId = vertexIndex;
+		}
+		return vertex;
+	}
 
-  @Override
-  public long getEdgeCount() {
-    long edges = 0;
-    for (Vertex<I, V, E> vertex : vertexMap.values()) {
-      edges += vertex.getNumEdges();
-    }
-    return edges;
-  }
+	@Override
+	public Vertex<I, V, E> putVertex(Vertex<I, V, E> vertex) {
+		return vertexMap.put(vertex.getId(), vertex);
+	}
 
-  @Override
-  public void saveVertex(Vertex<I, V, E> vertex) {
-    // No-op, vertices are stored as Java objects in this partition
-  }
+	@Override
+	public Vertex<I, V, E> removeVertex(I vertexIndex) {
+		return vertexMap.remove(vertexIndex);
+	}
 
-  @Override
-  public String toString() {
-    return "(id=" + getId() + ",V=" + vertexMap.size() + ")";
-  }
+	@Override
+	public void addPartition(Partition<I, V, E> partition) {
+		for (Vertex<I, V, E> vertex : partition) {
+			vertexMap.put(vertex.getId(), vertex);
+		}
+	}
 
-  @Override
-  public void readFields(DataInput input) throws IOException {
-    super.readFields(input);
-    if (USE_OUT_OF_CORE_MESSAGES.get(getConf())) {
-      vertexMap = new ConcurrentSkipListMap<I, Vertex<I, V, E>>();
-    } else {
-      vertexMap = Maps.newConcurrentMap();
-    }
-    int vertices = input.readInt();
-    for (int i = 0; i < vertices; ++i) {
-      progress();
-      Vertex<I, V, E> vertex =
-          WritableUtils.readVertexFromDataInput(input, getConf());
-      if (vertexMap.put(vertex.getId(), vertex) != null) {
-        throw new IllegalStateException(
-            "readFields: " + this +
-            " already has same id " + vertex);
-      }
-    }
-  }
+	@Override
+	public long getVertexCount() {
+		return vertexMap.size();
+	}
 
-  @Override
-  public void write(DataOutput output) throws IOException {
-    super.write(output);
-    output.writeInt(vertexMap.size());
-    for (Vertex<I, V, E> vertex : vertexMap.values()) {
-      progress();
-      WritableUtils.writeVertexToDataOutput(output, vertex, getConf());
-    }
-  }
+	@Override
+	public long getEdgeCount() {
+		long edges = 0;
+		for (Vertex<I, V, E> vertex : vertexMap.values()) {
+			edges += vertex.getNumEdges();
+		}
+		return edges;
+	}
 
-  @Override
-  public Iterator<Vertex<I, V, E>> iterator() {
-    return vertexMap.values().iterator();
-  }
+	@Override
+	public void saveVertex(Vertex<I, V, E> vertex) {
+		// No-op, vertices are stored as Java objects in this partition
+	}
+
+	@Override
+	public String toString() {
+		return "(id=" + getId() + ",V=" + vertexMap.size() + ")";
+	}
+
+	@Override
+	public void readFields(DataInput input) throws IOException {
+		super.readFields(input);
+		if (USE_OUT_OF_CORE_MESSAGES.get(getConf())) {
+			vertexMap = new ConcurrentSkipListMap<I, Vertex<I, V, E>>();
+		} else {
+			vertexMap = Maps.newConcurrentMap();
+		}
+		int vertices = input.readInt();
+		for (int i = 0; i < vertices; ++i) {
+			progress();
+			Vertex<I, V, E> vertex = WritableUtils.readVertexFromDataInput(input, getConf());
+			if (vertexMap.put(vertex.getId(), vertex) != null) {
+				throw new IllegalStateException("readFields: " + this + " already has same id " + vertex);
+			}
+		}
+	}
+
+	@Override
+	public void write(DataOutput output) throws IOException {
+		super.write(output);
+		output.writeInt(vertexMap.size());
+		for (Vertex<I, V, E> vertex : vertexMap.values()) {
+			progress();
+			WritableUtils.writeVertexToDataOutput(output, vertex, getConf());
+		}
+	}
+
+	@Override
+	public Iterator<Vertex<I, V, E>> iterator() {
+		return vertexMap.values().iterator();
+	}
 }
