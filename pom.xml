@@ -24,7 +24,7 @@ under the License.
   <groupId>org.apache.giraph</groupId>
   <artifactId>giraph-parent</artifactId>
   <packaging>pom</packaging>
-  <version>1.1.0-SNAPSHOT</version>
+  <version>1.1.0-viadeo-SNAPSHOT</version>
 
   <name>Apache Giraph Parent</name>
   <url>http://giraph.apache.org/</url>
@@ -61,12 +61,26 @@ under the License.
     <url>http://www.apache.org</url>
   </organization>
 
-  <distributionManagement>
-    <site>
-      <id>apache.website</id>
-      <url>scpexe://people.apache.org/www/giraph.apache.org</url>
-    </site>
-  </distributionManagement>
+
+	<!-- ======================= -->
+	<!-- DISTRIBUTION MANAGEMENT -->
+	<!-- ======================= -->
+	<distributionManagement>
+		<repository>
+			<id>releases</id>
+			<name>viadeo-releases</name>
+			<url>${com.viadeo.mvn.proxy.deployurl}/content/repositories/releases</url>
+		</repository>
+		<snapshotRepository>
+			<id>snapshots</id>
+			<name>viadeo-snapshots</name>
+			<url>${com.viadeo.mvn.proxy.deployurl}/content/repositories/snapshots</url>
+		</snapshotRepository>
+		<site>
+			<id>viadeo-sites-repo</id>
+			<url>${com.viadeo.mvn.sites.deploy.url}</url>
+		</site>
+	</distributionManagement>
 
   <mailingLists>
     <mailingList>
