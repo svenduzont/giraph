@@ -90,7 +90,7 @@ public class WorkerSuperstepMetrics implements Writable {
     if (gauge instanceof GiraphTimer) {
       GiraphTimer giraphTimer = (GiraphTimer) gauge;
       data.setTimeUnit(giraphTimer.getTimeUnit());
-      data.setValue(giraphTimer.value());
+      data.setValue(giraphTimer.getLong());
     } else if (gauge != null) {
       throw new IllegalStateException(name + " is not a GiraphTimer");
     }
