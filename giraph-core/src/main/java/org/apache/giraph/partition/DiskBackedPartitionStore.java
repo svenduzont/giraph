@@ -409,10 +409,6 @@ public class DiskBackedPartitionStore<I extends WritableComparable, V extends Wr
 		id.readFields(in);
 		Vertex<I, V, E> v = partition.getVertex(id);
 
-		boolean b = v == null;
-		if (b) {
-			System.out.println("NULL ----> " + id);
-		}
 		final Iterable<Edge<I, E>> edges = v.getEdges();
 		OutEdges<I, E> outEdges = (OutEdges<I, E>) edges;
 		outEdges.readFields(in);

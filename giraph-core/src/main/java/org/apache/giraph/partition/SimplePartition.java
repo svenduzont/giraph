@@ -83,20 +83,6 @@ public class SimplePartition<I extends WritableComparable, V extends Writable, E
 					throw new RuntimeException(e);
 				}
 		}
-		erzr();
-	}
-
-	protected void erzr() {
-		if (nullId == null) {
-			return;
-		}
-
-		final Set<I> keySet = vertexMap.keySet();
-		for (I i : keySet) {
-			System.out.println(i);
-		}
-		final Vertex<I, V, E> vertex = vertexMap.get(nullId);
-		System.out.println(vertex);
 	}
 
 	@Override
