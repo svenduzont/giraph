@@ -19,7 +19,6 @@
 package org.apache.giraph.partition;
 
 import org.apache.giraph.conf.ImmutableClassesGiraphConfiguration;
-import org.apache.giraph.edge.Edge;
 import org.apache.giraph.edge.OutEdges;
 import org.apache.giraph.graph.Vertex;
 import org.apache.hadoop.io.Writable;
@@ -388,7 +387,6 @@ public class DiskBackedPartitionStore<I extends WritableComparable, V extends Wr
 		value.readFields(in);
 		OutEdges<I, E> edges = conf.createAndInitializeOutEdges(0);
 		vertex.initialize(id, value, edges);
-
 		if (in.readBoolean()) {
 			vertex.voteToHalt();
 		} else {
@@ -408,9 +406,7 @@ public class DiskBackedPartitionStore<I extends WritableComparable, V extends Wr
 		I id = conf.createVertexId();
 		id.readFields(in);
 		Vertex<I, V, E> v = partition.getVertex(id);
-
-		final Iterable<Edge<I, E>> edges = v.getEdges();
-		OutEdges<I, E> outEdges = (OutEdges<I, E>) edges;
+		OutEdges<I, E> outEdges = (OutEdges<I, E>) v.getEdges();
 		outEdges.readFields(in);
 		partition.saveVertex(v);
 	}
@@ -425,14 +421,13 @@ public class DiskBackedPartitionStore<I extends WritableComparable, V extends Wr
 	 */
 	private Partition<I, V, E> loadPartition(Integer id, int numVertices) throws IOException {
 		Partition<I, V, E> partition = conf.createPartition(id, context);
-		File vertexFile = new File(getVerticesPath(id));
+		File file = new File(getVerticesPath(id));
 		if (LOG.isDebugEnabled()) {
-			LOG.debug("loadPartition: loading partition vertices " + partition.getId() + " from "
-					+ vertexFile.getAbsolutePath());
+			LOG.debug("loadPartition: loading partition vertices " + partition.getId() + " from " + file.getAbsolutePath());
 		}
 		DataInputStream inputStream = null;
 		try {
-			inputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(vertexFile)));
+			inputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(file)));
 			for (int i = 0; i < numVertices; ++i) {
 				Vertex<I, V, E> vertex = conf.createVertex();
 				readVertexData(inputStream, vertex);
@@ -444,43 +439,32 @@ public class DiskBackedPartitionStore<I extends WritableComparable, V extends Wr
 				inputStream = null;
 			}
 		}
-		if (backitupz(vertexFile)) {
-			LOG.error("loadPartition: Failed to delete file " + vertexFile);
+		if (!file.delete()) {
+			LOG.error("loadPartition: Failed to delete file " + file);
 		}
-		File edgesFile = new File(getEdgesPath(id));
+		file = new File(getEdgesPath(id));
 		if (LOG.isDebugEnabled()) {
-			LOG.debug("loadPartition: loading partition edges " + partition.getId() + " from " + edgesFile.getAbsolutePath());
+			LOG.debug("loadPartition: loading partition edges " + partition.getId() + " from " + file.getAbsolutePath());
 		}
 		try {
-			inputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(edgesFile)));
+			inputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(file)));
 			for (int i = 0; i < numVertices; ++i) {
 				readOutEdges(inputStream, partition);
 			}
 		} finally {
-			/*
-			 * If the graph is static, keep the file around.
-			 */
-			final boolean cp = backitupz(edgesFile);
-			if (!conf.isStaticGraph()) {
-				if (cp) {
-					LOG.error("loadPartition: Failed to delete file " + edgesFile);
-				}
+			if (inputStream != null) {
+				inputStream.close();
 			}
-			((SimplePartition) partition).dump(getDest(edgesFile, "dump"));
+		}
+		/*
+		 * If the graph is static, keep the file around.
+		 */
+		if (!conf.isStaticGraph()) {
+			if (!file.delete()) {
+				LOG.error("loadPartition: Failed to delete file " + file);
+			}
 		}
 		return partition;
-	}
-
-	protected boolean backitupz(File file) {
-		return !file.renameTo(getDest(file, "bak"));
-	}
-
-	protected File getDest(File edgesFile, final String sfx) {
-		final File parent = edgesFile.getParentFile().getParentFile().getParentFile();
-		final File parentDest = new File("/tmp/crado/" + parent.getName());
-		if (!parentDest.exists())
-			parentDest.mkdirs();
-		return new File(parentDest, edgesFile.getName() + "." + sfx);
 	}
 
 	/**
